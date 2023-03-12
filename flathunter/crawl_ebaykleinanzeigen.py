@@ -76,18 +76,6 @@ class CrawlEbayKleinanzeigen(Crawler):
             address = address.text.strip()
             address = address.replace('\n', ' ').replace('\r', '')
             address = " ".join(address.split())
-            def extract_plz(self, text):
-                plz = re.findall('\d{5}', text)
-                if (plz == None):
-                    plz = '0'
-                elif (len(plz) < 1):   
-                    plz = '0'
-                else :
-                    # only use first plz in case there a more than one found in te
-                    plz = plz[0]
-                return plz
-            
-            plz = extract_plz(self, address)
 
             try:
                 rooms = re.match(r'(\d+)', tags[1].text)[1]
@@ -106,7 +94,6 @@ class CrawlEbayKleinanzeigen(Crawler):
                 'size': size,
                 'rooms': rooms,
                 'address': address,
-                'plz': plz,
                 'crawler': self.get_name()
             }
             entries.append(details)

@@ -28,7 +28,7 @@ class AddressResolver(Processor):
         elif (len(plz) < 1):   
             plz = '0'
         else :
-            # only use first plz in case there a more than one found in te
+            # only use first plz in case there a more than one found in the text ...
             plz = plz[0]
         return plz
 
@@ -39,9 +39,10 @@ class AddressResolver(Processor):
             for searcher in self.config.searchers():
                 if re.search(searcher.URL_PATTERN, url):
                     expose['address'] = searcher.load_address(url)
-                    expose['plz'] = self.extract_plz(expose['address'])
+                    
                     logger.debug("Loaded address %s and %s for url %s", expose['address'], expose['plz'], url)
                     break
+        expose['plz'] = self.extract_plz(expose['address'])            
         return expose
 
 class CrawlExposeDetails(Processor):
