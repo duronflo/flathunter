@@ -1,6 +1,6 @@
 """Wrap configuration options as an object"""
 import os
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import json
 import yaml
@@ -42,6 +42,8 @@ class Env:
     FLATHUNTER_GOOGLE_CLOUD_PROJECT_ID = _read_env("FLATHUNTER_GOOGLE_CLOUD_PROJECT_ID")
     FLATHUNTER_VERBOSE_LOG = _read_env("FLATHUNTER_VERBOSE_LOG")
     FLATHUNTER_LOOP_PERIOD_SECONDS = _read_env("FLATHUNTER_LOOP_PERIOD_SECONDS")
+    FLATHUNTER_LOOP_PAUSE_FROM = _read_env("FLATHUNTER_LOOP_PAUSE_FROM")
+    FLATHUNTER_LOOP_PAUSE_TILL = _read_env("FLATHUNTER_LOOP_PAUSE_TILL")
     FLATHUNTER_MESSAGE_FORMAT = _read_env("FLATHUNTER_MESSAGE_FORMAT")
 
     # Website setup
@@ -129,10 +131,15 @@ Preis: {price}
         """Resolve a dotted variable path in nested dictionaries"""
         config = self.config
         parts = path.split('.')
-        while len(parts) > 1:
+        while len(parts) > 1 and config is not None:
             config = config.get(parts[0], {})
             parts = parts[1:]
-        return config.get(parts[0], default_value)
+        if config is None:
+            return default_value
+        res = config.get(parts[0], default_value)
+        if res is None:
+            return default_value
+        return res
 
     def set_searchers(self, searchers):
         """Update the active search plugins"""
@@ -183,6 +190,14 @@ Preis: {price}
         """Number of seconds to wait between crawls when looping"""
         return self._read_yaml_path('loop.sleeping_time', 60 * 10)
 
+    def loop_pause_from(self):
+        """Start time of loop pause"""
+        return self._read_yaml_path('loop.pause.from', "00:00")
+
+    def loop_pause_till(self):
+        """End time of loop pause"""
+        return self._read_yaml_path('loop.pause.till', "00:00")
+
     def has_website_config(self):
         """True if the flathunter website configuration is present"""
         return 'website' in self.config
@@ -231,11 +246,15 @@ Preis: {price}
         """Webhook for sending Mattermost messages"""
         return self._read_yaml_path('mattermost.webhook_url', None)
 
+    def apprise_urls(self):
+        """Notification URLs for Apprise"""
+        return self._read_yaml_path('apprise', [])
+
     def _get_imagetyperz_token(self):
         """API Token for Imagetyperz"""
         return self._read_yaml_path("captcha.imagetyperz.token", "")
 
-    def _get_twocaptcha_key(self):
+    def get_twocaptcha_key(self):
         """API Token for 2captcha"""
         return self._read_yaml_path("captcha.2captcha.api_key", "")
 
@@ -245,7 +264,7 @@ Preis: {price}
         if imagetyperz_token:
             return ImageTyperzSolver(imagetyperz_token)
 
-        twocaptcha_api_key = self._get_twocaptcha_key()
+        twocaptcha_api_key = self.get_twocaptcha_key()
         if twocaptcha_api_key:
             return TwoCaptchaSolver(twocaptcha_api_key)
 
@@ -266,13 +285,17 @@ Preis: {price}
         """Check if proxy is configured"""
         return "use_proxy_list" in self.config and self.config["use_proxy_list"]
 
+    def set_keys(self, dict_keys: Dict[str, Any]):
+        """Update the config keys based on the content of the dictionary passed"""
+        self.config.update(dict_keys)
+
     def __repr__(self):
         return json.dumps({
             "captcha_enabled": self.captcha_enabled(),
             "captcha_driver_arguments": self.captcha_driver_arguments(),
             "captcha_solver": type(self._get_captcha_solver()).__name__,
             "imagetyperz_token": elide(self._get_imagetyperz_token()),
-            "twocaptcha_key": elide(self._get_twocaptcha_key()),
+            "twocaptcha_key": elide(self.get_twocaptcha_key()),
             "mattermost_webhook_url": self.mattermost_webhook_url(),
             "notifiers": self.notifiers(),
             "telegram_receiver_ids": self.telegram_receiver_ids(),
@@ -289,10 +312,11 @@ class CaptchaEnvironmentConfig():
             return Env.FLATHUNTER_IMAGETYPERZ_TOKEN
         return super()._get_imagetyperz_token() # pylint: disable=no-member
 
-    def _get_twocaptcha_key(self):
+    def get_twocaptcha_key(self):
+        """Return the currently configured 2captcha API key"""
         if Env.FLATHUNTER_2CAPTCHA_KEY is not None:
             return Env.FLATHUNTER_2CAPTCHA_KEY
-        return super()._get_twocaptcha_key() # pylint: disable=no-member
+        return super().get_twocaptcha_key() # pylint: disable=no-member
 
     def captcha_driver_arguments(self):
         """The list of driver arguments for Selenium / Webdriver"""
@@ -351,6 +375,16 @@ class Config(CaptchaEnvironmentConfig,YamlConfig):
         if Env.FLATHUNTER_LOOP_PERIOD_SECONDS is not None:
             return int(Env.FLATHUNTER_LOOP_PERIOD_SECONDS)
         return super().loop_period_seconds()
+
+    def loop_pause_from(self):
+        if Env.FLATHUNTER_LOOP_PAUSE_FROM is not None:
+            return str(Env.FLATHUNTER_LOOP_PAUSE_FROM)
+        return super().loop_pause_from()
+
+    def loop_pause_till(self):
+        if Env.FLATHUNTER_LOOP_PAUSE_TILL is not None:
+            return str(Env.FLATHUNTER_LOOP_PAUSE_TILL)
+        return super().loop_pause_till()
 
     def has_website_config(self):
         if Env.FLATHUNTER_WEBSITE_SESSION_KEY is not None:
