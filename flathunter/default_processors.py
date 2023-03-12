@@ -21,6 +21,17 @@ class AddressResolver(Processor):
     def __init__(self, config):
         self.config = config
 
+    def extract_plz(self, address):
+        plz = re.findall('\d{5}', address)
+        if (plz == None):
+            plz = '0'
+        elif (len(plz) < 1):   
+            plz = '0'
+        else :
+            # only use first plz in case there a more than one found in te
+            plz = plz[0]
+        return plz
+
     def process_expose(self, expose):
         """Fetches the expose from the expose URL and extracts the address"""
         if expose['address'].startswith('http'):
@@ -28,7 +39,8 @@ class AddressResolver(Processor):
             for searcher in self.config.searchers():
                 if re.search(searcher.URL_PATTERN, url):
                     expose['address'] = searcher.load_address(url)
-                    logger.debug("Loaded address %s for url %s", expose['address'], url)
+                    expose['plz'] = self.extract_plz(expose['address'])
+                    logger.debug("Loaded address %s and %s for url %s", expose['address'], expose['plz'], url)
                     break
         return expose
 

@@ -47,6 +47,7 @@ class Hunter:
                                         .save_all_exposes(self.id_watch) \
                                         .apply_filter(filter_set) \
                                         .resolve_addresses() \
+                                        .get_estate_value() \
                                         .calculate_durations() \
                                         .send_messages() \
                                         .build()

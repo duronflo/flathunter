@@ -5,6 +5,7 @@ from flathunter.default_processors import AddressResolver
 from flathunter.default_processors import Filter
 from flathunter.default_processors import LambdaProcessor
 from flathunter.default_processors import CrawlExposeDetails
+from flathunter.estate_value_processor import HomeDayGetEstateValueProcessor
 from flathunter.sender_mattermost import SenderMattermost
 from flathunter.sender_apprise import SenderApprise
 from flathunter.sender_telegram import SenderTelegram
@@ -41,6 +42,11 @@ class ProcessorChainBuilder:
         if durations_enabled:
             self.processors.append(GMapsDurationProcessor(self.config))
         return self
+    
+    def get_estate_value(self):
+         """Add processor to calculate durations, if enabled"""
+         self.processors.append(HomeDayGetEstateValueProcessor(self.config))
+         return self       
 
     def crawl_expose_details(self):
         """Add processor to crawl expose details"""
